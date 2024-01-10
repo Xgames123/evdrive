@@ -104,6 +104,7 @@ def run():
 
     target_pos=0
     follow=False
+    ffb=True
     while True:
         data = con.recv(5)
         if len(data) != 5:
@@ -117,6 +118,10 @@ def run():
             follow=True
         elif data[4] == 3:
             follow = False
+        elif data[4] == 4:
+            ffb = True
+        elif data[4] == 5:
+            ffb = False
 
         angle = s.angle*offset
         delta=m.position-m.position_sp
@@ -135,13 +140,14 @@ def run():
 
         m.position_sp = target_pos
         m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
-        m.run_to_abs_pos()
+        if ffb:
+            m.run_to_abs_pos()
         send_data = bytearray(int(angle).to_bytes(4, 'big', signed=True))
         if start_button.is_pressed:
             send_data.append(1)
         else:
             send_data.append(0)
-        
+
         try:
             con.send(send_data)
         except:
