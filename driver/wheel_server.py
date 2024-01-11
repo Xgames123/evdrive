@@ -4,11 +4,13 @@ import math
 import socket
 
 from ev3dev2.motor import LargeMotor, OUTPUT_A, SpeedPercent
-from ev3dev2.sensor import INPUT_2, INPUT_1
+from ev3dev2.sensor import INPUT_2, INPUT_1, INPUT_3, INPUT_4
 from ev3dev2.sensor.lego import GyroSensor, TouchSensor
 
-IP="10.42.0.3"
+IP="0.0.0.0"
 PORT=6769
+
+MANUAL_ZERO=False
 
 FOLLOW_MARGIN=50
 CALIB_LEN=4
@@ -17,11 +19,18 @@ CALIB_JUMP=30
 #CALIB_DELAY=1.5
 CALIB_DELAY=1
 MAX_FORCE=230
+MOTOR_LIMIT=1200
+
 
 def clamp01(n):
     return clamp(n, 0, 1)
 def clamp(n, minv, maxv):
     return max(minv, min(n, maxv))
+
+def to01(value, minb, maxb):
+    if maxb-minb == 0:
+        return 0
+    return clamp01(float(value - minb) / float(maxb-minb))
 
 def calib_segment(count, direct=1):
     offsets=[]
@@ -30,6 +39,10 @@ def calib_segment(count, direct=1):
         m.on_to_position(SpeedPercent(50), motor_rot)
         sleep(1.5)
         angle=s.angle
+        if angle == 0:
+            print("WARN: div by zero")
+            offsets.append(1)
+            continue
         new_offset=(motor_rot/angle)
         print("offset="+str(new_offset))
         offsets.append(new_offset)
@@ -59,6 +72,8 @@ def calibrate(count=CALIB_LEN):
 print("searching for devices...")
 
 start_button=TouchSensor(INPUT_1)
+gear_switch_l=TouchSensor(INPUT_3)
+gear_switch_r=TouchSensor(INPUT_4)
 m = LargeMotor(OUTPUT_A)
 s = GyroSensor(INPUT_2)
 
@@ -80,7 +95,8 @@ def manual_zeroing():
 
 print("zeroing wheel based of of previous data")
 m.on_to_position(SpeedPercent(100), 0)
-manual_zeroing()
+if MANUAL_ZERO:
+    manual_zeroing()
 
 print("zeroing sensor")
 
@@ -95,21 +111,19 @@ calibrate()
 def run():
     global socket
     global calibrated
-    print("Waiting for connection")
-    socket.listen(1)
-    con, addr = socket.accept()
-    print("Got connection from ", addr)
-    if not calibrated:
-        calibrate(CALIB_LEN)
+    print("listening on ", IP, ":", PORT)
 
     target_pos=0
     follow=False
     ffb=True
     while True:
-        data = con.recv(5)
+        data, addr = socket.recvfrom(5)
+        if len(data) == 1 and data[0] == 255:
+            print("quit")
+            return
+
         if len(data) != 5:
             print("Invalid data. closing connection")
-            con.close()
             return
         target=int.from_bytes(data[0:4], "big", signed= True)
         if data[4] == 1:
@@ -126,7 +140,7 @@ def run():
         angle = s.angle*offset
         delta=m.position-m.position_sp
 
-        print(abs(target-angle))
+        #print(abs(target-angle))
         if target-angle > MAX_FORCE:
             target=angle+MAX_FORCE
         elif target-angle < -MAX_FORCE:
@@ -135,24 +149,35 @@ def run():
         if follow:
             target=angle
 
-        target_pos = clamp(target, -1200, 1200)
+        target_pos = clamp(target, -MOTOR_LIMIT, MOTOR_LIMIT)
 
 
         m.position_sp = target_pos
         m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
         if ffb:
             m.run_to_abs_pos()
-        send_data = bytearray(int(angle).to_bytes(4, 'big', signed=True))
+
+
+        send_data = bytearray(int(angle+360).to_bytes(4, 'big', signed=True))
         if start_button.is_pressed:
             send_data.append(1)
         else:
             send_data.append(0)
 
+        if gear_switch_l.is_pressed:
+            send_data.append(1)
+        else:
+            send_data.append(0)
+
+        if gear_switch_r.is_pressed:
+            send_data.append(1)
+        else:
+            send_data.append(0)
+
         try:
-            con.send(send_data)
+            socket.sendto(send_data, addr)
         except:
             print("Failed to send data. closing connection")
-            con.close()
             return
 
 
@@ -161,7 +186,7 @@ m.position_sp = 0
 m.speed_sp=m.max_speed
 m.stop_action="coast"
 
-socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 socket.bind((IP, PORT))
 while True:
     try:

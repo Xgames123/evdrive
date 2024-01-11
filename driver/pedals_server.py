@@ -36,26 +36,23 @@ def run():
     global trot
     global brea
     global clu
-    print("Waiting for connection")
-    socket.listen(1)
-    con, addr = socket.accept()
-    print("Got connection from ", addr)
-
+    print("listening on ", IP, ":", PORT)
     while True:
-        data = con.recv(1)
+        data, addr = socket.recvfrom(1)
+        if data[0] == 255:
+            print("quit")
+            return
         send_data = bytearray()
 
         send_data.append(int(trot.get()*255))
         send_data.append(int(brea.get()*255))
         send_data.append(int(clu.get()*255))
-
-        con.sendall(send_data)
+        print(send_data)
 
         try:
-            con.send(send_data)
+            socket.sendto(send_data, addr)
         except:
             print("Failed to send data. closing connection")
-            con.close()
             return
 
 
@@ -65,7 +62,7 @@ clu=Pedal(OUTPUT_B)
 
 
 
-socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 socket.bind((IP, PORT))
 while True:
     try:
