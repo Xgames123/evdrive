@@ -25,7 +25,7 @@ class Pedal:
 
     def get(self):
         val=self.m.position
-        if val < self.min:
+        if calib and val < self.min:
             self.min=val
         mapped_val= to01(val, self.zero, self.min)
         return mapped_val
@@ -36,12 +36,17 @@ def run():
     global trot
     global brea
     global clu
+    global calib
     print("listening on ", IP, ":", PORT)
+    calib=True
     while True:
         data, addr = socket.recvfrom(1)
         if data[0] == 255:
             print("quit")
             return
+        elif data[0] == 1:
+            print("stop calibration")
+            calib=False
         send_data = bytearray()
 
         send_data.append(int(trot.get()*255))
@@ -64,6 +69,7 @@ clu=Pedal(OUTPUT_B)
 
 socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 socket.bind((IP, PORT))
+calib=True
 while True:
     try:
         run()

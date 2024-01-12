@@ -1,19 +1,20 @@
 #!/bin/python3
 import vgamepad as vg
 import time
-
-
 import socket
 import sys
 
-WHEEL_IP="192.168.137.64"
+WHEEL_IP="169.254.211.203"
 WHEEL_PORT=6769
 
-PEDALS_IP="192.168.137.102"
+PEDALS_IP="169.254.2.151"
 PEDALS_PORT=6767
 
 DISABLE_STEERING=False
 DISABLE_PEDALS=False
+
+# TODO: send stop calib packet to pedals after some time
+# TODO: auto detect ips ?
 
 CMD_CALIB=1
 CMD_FOLLOW_ON=2
@@ -50,8 +51,6 @@ def do_pedals():
     trot=float(data[0])/255
     brea=float(data[1])/255
     clu=float(data[2])/255
-
-    print(trot, brea, clu)
 
     gamepad.right_trigger_float(trot)
     gamepad.left_trigger_float(brea)
