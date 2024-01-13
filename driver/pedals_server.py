@@ -5,7 +5,7 @@ import math
 import socket
 
 IP="0.0.0.0"
-PORT=6767
+PORT=6769
 
 def clamp01(n):
     return clamp(n, 0, 1)
@@ -22,11 +22,21 @@ class Pedal:
         self.m=m
         self.zero=m.position
         self.min=self.zero
+        self.calibrated=False
+
+    def calib(self):
+        val = self.m.position
+        if val < self.min:
+            self.min=val
+        if self.min < self.zero-5 and val < (self.min+5):
+            self.calibrated=True
+        return self.calibrated
+
+    def start_calib(self):
+        self.calibrated=False
 
     def get(self):
         val=self.m.position
-        if calib and val < self.min:
-            self.min=val
         mapped_val= to01(val, self.zero, self.min)
         return mapped_val
 
@@ -39,20 +49,28 @@ def run():
     global calib
     print("listening on ", IP, ":", PORT)
     calib=True
+    print("Calibrating...")
+    trot.start_calib()
+    brea.start_calib()
+    clu.start_calib()
+    print("PRESS DOWN ALL PEDALS SLOWLY")
     while True:
         data, addr = socket.recvfrom(1)
         if data[0] == 255:
             print("quit")
             return
-        elif data[0] == 1:
-            print("stop calibration")
-            calib=False
         send_data = bytearray()
 
-        send_data.append(int(trot.get()*255))
-        send_data.append(int(brea.get()*255))
-        send_data.append(int(clu.get()*255))
-        print(send_data)
+        if calib:
+            send_data = bytearray(b"\x00\x00\x00")
+            if trot.calib() & brea.calib() & clu.calib():
+                print("calibration done")
+                calib=False
+        else:
+            send_data.append(int(trot.get()*255))
+            send_data.append(int(brea.get()*255))
+            send_data.append(int(clu.get()*255))
+            print(send_data)
 
         try:
             socket.sendto(send_data, addr)

@@ -1,20 +1,9 @@
 #!/bin/python3
 import vgamepad as vg
 import time
+from os import environ
 import socket
 import sys
-
-WHEEL_IP="169.254.211.203"
-WHEEL_PORT=6769
-
-PEDALS_IP="169.254.2.151"
-PEDALS_PORT=6767
-
-DISABLE_STEERING=False
-DISABLE_PEDALS=False
-
-# TODO: send stop calib packet to pedals after some time
-# TODO: auto detect ips ?
 
 CMD_CALIB=1
 CMD_FOLLOW_ON=2
@@ -22,9 +11,31 @@ CMD_FOLLOW_OFF=3
 CMD_FFB_ON=4
 CMD_FFB_OFF=5
 
+
+def connect(env_name, name):
+    addr=None
+    s=None
+    if not env_name in environ:
+        print(env_name, "environment variable is required")
+        exit(1)
+    addr=(environ[env_name], 6769)
+    print("Connecting to", name, addr)
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(2)
+    s.connect(addr)
+    return addr, s
+
+def connect_pedals():
+    return connect("PEDALS_IP", "pedals")
+def connect_wheel():
+    addr, s = connect("WHEEL_IP", "wheel")
+    wheel_send_packet(0, CMD_FFB_OFF)
+    return addr, s
+
+
 def wheel_send_packet(target, cmd=0):
     global wheel_s
-    if DISABLE_STEERING:
+    if disable_wheel:
         return
     send_data=bytearray(target.to_bytes(4, "big"))
     send_data.append(cmd)
@@ -90,50 +101,51 @@ def do_steering_wheel():
     #print(angle)
     gamepad.left_joystick_float(angle, 0)
 
+disable_wheel=False
+disable_pedals=False
+
 args = sys.argv
 if "-dp" in args:
-    DISABLE_PEDALS=True
-elif "-ds" in args:
-    DISABLE_STEERING=True
+    disable_pedals=True
+elif "-dw" in args:
+    disable_wheel=True
+elif "--help" in args or "-h" in args:
+    print(
+"""driver.py [OPTIONS]
+    OPTIONS:
+    -dp           disable pedals
+    -dw           disable wheel
+    -h, --help    show this message
+""")
+
+    exit(0)
+
+if disable_wheel and disable_pedals:
+    print("ERR: steering and pedals can not be disabled at the same time")
+    exit(1)
 
 gamepad = vg.VX360Gamepad()
 gamepad.reset()
 
-wheel_s=None
-if not DISABLE_STEERING:
-    print("Connecting to wheel")
-    wheel_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    wheel_s.settimeout(2)
-    wheel_s.connect((WHEEL_IP, WHEEL_PORT))
+wheel_addr, wheel_s = None
+if not disable_wheel:
+    wheel_addr, wheel_s = connect_wheel()
 
-pedals_s=None
-if not DISABLE_PEDALS:
-    print("Connecting to pedals")
-    pedals_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    pedals_s.settimeout(2)
-    pedals_s.connect((PEDALS_IP, PEDALS_PORT))
-
-if "-f" in args:
-    wheel_send_packet(0, CMD_FOLLOW_ON)
-elif "-c" in args:
-    wheel_send_packet(0, CMD_CALIB)
-
-wheel_send_packet(0, CMD_FFB_OFF)
+pedals_addr, pedals_s = None
+if not disable_pedals:
+    pedals_addr, pedals_s = connect_pedals()
 
 
 target=0
 quit_data=b'0xff'
 try:
     while True:
-        if not DISABLE_PEDALS:
+        if not disable_pedals:
             do_pedals()
-        if not DISABLE_STEERING:
+        if not disable_wheel:
             do_steering_wheel()
         gamepad.update()
 
-        if DISABLE_STEERING and DISABLE_PEDALS:
-            print("ERR: steering or pedals need to be enabled")
-            break
 
 except KeyboardInterrupt:
     print("disconecting")
