@@ -17,19 +17,20 @@ def to01(value, minb, maxb):
     return clamp01(float(value - minb) / float(maxb-minb))
 
 class Pedal:
-    def __init__(self, addr):
+    def __init__(self, addr, name):
         m=LargeMotor(addr)
         self.m=m
         self.zero=m.position
         self.min=self.zero
         self.calibrated=False
+        self.name = name
 
     def calib(self):
         val = self.m.position
         if val < self.min:
             self.min=val
-        if self.min < self.zero-5 and val < (self.min+5):
-            print("pedal calibrated")
+        if not self.calibrated and self.min < self.zero-5 and val > self.zero-5:
+            print(self.name, "calibrated")
             self.calibrated=True
         return self.calibrated
 
@@ -82,9 +83,9 @@ def run():
             return
 
 
-trot=Pedal(OUTPUT_D)
-brea=Pedal(OUTPUT_C)
-clu=Pedal(OUTPUT_B)
+trot=Pedal(OUTPUT_D, "trot")
+brea=Pedal(OUTPUT_C, "break")
+clu=Pedal(OUTPUT_B, "cluch")
 
 
 

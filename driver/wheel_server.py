@@ -6,6 +6,7 @@ import socket
 from ev3dev2.motor import LargeMotor, OUTPUT_A, SpeedPercent
 from ev3dev2.sensor import INPUT_2, INPUT_1, INPUT_3, INPUT_4
 from ev3dev2.sensor.lego import GyroSensor, TouchSensor
+from ev3dev2.button import Button
 
 IP="0.0.0.0"
 PORT=6769
@@ -76,6 +77,7 @@ gear_switch_l=TouchSensor(INPUT_3)
 gear_switch_r=TouchSensor(INPUT_4)
 m = LargeMotor(OUTPUT_A)
 s = GyroSensor(INPUT_2)
+buttons = Button()
 
 
 def manual_zeroing():
@@ -111,12 +113,17 @@ calibrate()
 def run():
     global socket
     global calibrated
+    global buttons
     print("listening on ", IP, ":", PORT)
 
     target_pos=0
     follow=False
     ffb=True
+    angle=0
     while True:
+        if buttons.enter:
+            calibrate()
+
         data, addr = socket.recvfrom(5)
         if len(data) == 1 and data[0] == 255:
             print("quit")
@@ -137,7 +144,10 @@ def run():
         elif data[4] == 5:
             ffb = False
 
-        angle = s.angle*offset
+        try:
+            angle = s.angle*offset
+        except ValueError:
+            print("Failed to get gyro angle (ValueError)")
         delta=m.position-m.position_sp
 
         #print(abs(target-angle))
