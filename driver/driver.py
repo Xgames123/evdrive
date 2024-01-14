@@ -29,17 +29,16 @@ def connect_pedals():
     return connect("PEDALS_IP", "pedals")
 def connect_wheel():
     addr, s = connect("WHEEL_IP", "wheel")
-    wheel_send_packet(0, CMD_FFB_OFF)
+    wheel_send_packet(s, 0, CMD_FFB_OFF)
     return addr, s
 
 
-def wheel_send_packet(target, cmd=0):
-    global wheel_s
+def wheel_send_packet(socket, wheel, target, cmd=0):
     if disable_wheel:
         return
     send_data=bytearray(target.to_bytes(4, "big"))
     send_data.append(cmd)
-    wheel_s.sendall(send_data)
+    socket.sendall(send_data)
 
 
 def do_pedals():
