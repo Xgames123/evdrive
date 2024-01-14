@@ -127,11 +127,13 @@ if disable_wheel and disable_pedals:
 gamepad = vg.VX360Gamepad()
 gamepad.reset()
 
-wheel_addr, wheel_s = None
+wheels_addr = None
+wheel_s = None
 if not disable_wheel:
     wheel_addr, wheel_s = connect_wheel()
 
-pedals_addr, pedals_s = None
+pedals_addr = None
+pedals_s = None
 if not disable_pedals:
     pedals_addr, pedals_s = connect_pedals()
 

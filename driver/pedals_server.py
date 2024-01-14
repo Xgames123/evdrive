@@ -29,6 +29,7 @@ class Pedal:
         if val < self.min:
             self.min=val
         if self.min < self.zero-5 and val < (self.min+5):
+            print("pedal calibrated")
             self.calibrated=True
         return self.calibrated
 
@@ -47,30 +48,32 @@ def run():
     global brea
     global clu
     global calib
-    print("listening on ", IP, ":", PORT)
-    calib=True
-    print("Calibrating...")
-    trot.start_calib()
-    brea.start_calib()
-    clu.start_calib()
-    print("PRESS DOWN ALL PEDALS SLOWLY")
+    if calib:
+        print("Calibrating...")
+        trot.start_calib()
+        brea.start_calib()
+        clu.start_calib()
+        print("PRESS DOWN ALL PEDALS SLOWLY")
+    else:
+        print("listening on ", IP, ":", PORT)
     while True:
+        if calib:
+            if trot.calib() & brea.calib() & clu.calib():
+                print("calibration done")
+                print("listening on ", IP, ":", PORT)
+                calib=False
+            continue
+
         data, addr = socket.recvfrom(1)
         if data[0] == 255:
             print("quit")
             return
-        send_data = bytearray()
 
-        if calib:
-            send_data = bytearray(b"\x00\x00\x00")
-            if trot.calib() & brea.calib() & clu.calib():
-                print("calibration done")
-                calib=False
-        else:
-            send_data.append(int(trot.get()*255))
-            send_data.append(int(brea.get()*255))
-            send_data.append(int(clu.get()*255))
-            print(send_data)
+        send_data = bytearray()
+        send_data.append(int(trot.get()*255))
+        send_data.append(int(brea.get()*255))
+        send_data.append(int(clu.get()*255))
+        print(send_data)
 
         try:
             socket.sendto(send_data, addr)
