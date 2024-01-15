@@ -50,7 +50,7 @@ def calib_segment(count, direct=1):
         print(str(i+1)+"/"+str(count))
     return offsets
 
-def calibrate(count=CALIB_LEN):
+def calibrate(count=CALIB_LEN, ffb=True):
     global calibrated
     calibrated = True
     print("calibrating...")
@@ -162,9 +162,9 @@ def run():
         target_pos = clamp(target, -MOTOR_LIMIT, MOTOR_LIMIT)
 
 
-        m.position_sp = target_pos
-        m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
         if ffb:
+            m.position_sp = target_pos
+            m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
             m.run_to_abs_pos()
 
 

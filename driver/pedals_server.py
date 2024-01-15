@@ -1,6 +1,7 @@
 #!/bin/python3
 from time import sleep
 from ev3dev2.motor import LargeMotor, OUTPUT_D, OUTPUT_B, OUTPUT_C
+from ev3dev2.sound import Sound
 import math
 import socket
 
@@ -86,7 +87,7 @@ def run():
 trot=Pedal(OUTPUT_D, "trot")
 brea=Pedal(OUTPUT_C, "break")
 clu=Pedal(OUTPUT_B, "cluch")
-
+sound = Sound()
 
 
 socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
