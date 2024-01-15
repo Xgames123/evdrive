@@ -7,6 +7,7 @@ from ev3dev2.motor import LargeMotor, OUTPUT_A, SpeedPercent
 from ev3dev2.sensor import INPUT_2, INPUT_1, INPUT_3, INPUT_4
 from ev3dev2.sensor.lego import GyroSensor, TouchSensor
 from ev3dev2.button import Button
+from ev3dev2.sound import Sound
 
 IP="0.0.0.0"
 PORT=6769
@@ -52,32 +53,42 @@ def calib_segment(count, direct=1):
 
 def calibrate(count=CALIB_LEN, ffb=True):
     global calibrated
-    calibrated = True
-    print("calibrating...")
-    m.on_to_position(SpeedPercent(100), 0)
-    sleep(1.5)
-    offsets=calib_segment(math.floor(count/2), 1)
-    m.on_to_position(SpeedPercent(100), 0)
-    sleep(1.5)
-    offsets+=calib_segment(math.ceil(count/2), -1)
-    m.on_to_position(SpeedPercent(100), 0)
+    global sound
+    #calibrated = True
+    #print("zeroing wheel based of of previous data")
+    #m.on_to_position(SpeedPercent(100), 0)
+    #if MANUAL_ZERO:
+    #    manual_zeroing()
 
-    offsets.sort()
-    global offset
-    offset = offsets[len(offsets)//2]
-    print(offset)
-    print("calibrating done")
-    print("offset="+str(offset))
+    print("zeroing sensor")
+    #m.reset()
+    s.calibrate()
+
+    #sleep(1.5)
+    #offsets=calib_segment(math.floor(count/2), 1)
+    #m.on_to_position(SpeedPercent(100), 0)
+    #sleep(1.5)
+    #offsets+=calib_segment(math.ceil(count/2), -1)
+    #m.on_to_position(SpeedPercent(100), 0)
+
+    #offsets.sort()
+    #global offset
+    #offset = offsets[len(offsets)//2]
+    #print(offset)
+    #print("calibrating done")
+    #print("offset="+str(offset))
+    sound.beep()
 
 
-print("searching for devices...")
+print("setting up devices")
 
 start_button=TouchSensor(INPUT_1)
 gear_switch_l=TouchSensor(INPUT_3)
 gear_switch_r=TouchSensor(INPUT_4)
-m = LargeMotor(OUTPUT_A)
+#m = LargeMotor(OUTPUT_A)
 s = GyroSensor(INPUT_2)
 buttons = Button()
+sound = Sound()
 
 
 def manual_zeroing():
@@ -95,19 +106,10 @@ def manual_zeroing():
        elif cmd == "":
            break
 
-print("zeroing wheel based of of previous data")
-m.on_to_position(SpeedPercent(100), 0)
-if MANUAL_ZERO:
-    manual_zeroing()
-
-print("zeroing sensor")
-
-m.reset()
-s.calibrate()
 
 
-offset=3
-calibrated=False
+#offset=3
+#calibrated=False
 
 calibrate()
 def run():
@@ -139,33 +141,33 @@ def run():
             follow=True
         elif data[4] == 3:
             follow = False
-        elif data[4] == 4:
-            ffb = True
-        elif data[4] == 5:
-            ffb = False
+        #elif data[4] == 4:
+        #    ffb = True
+        #elif data[4] == 5:
+        #    ffb = False
 
         try:
-            angle = s.angle*offset
+            angle = s.angle#*offset
         except ValueError:
             print("Failed to get gyro angle (ValueError)")
-        delta=m.position-m.position_sp
+        #if ffb:
+            #delta=m.position-m.position_sp
 
-        #print(abs(target-angle))
-        if target-angle > MAX_FORCE:
-            target=angle+MAX_FORCE
-        elif target-angle < -MAX_FORCE:
-            target=angle-MAX_FORCE
+            #print(abs(target-angle))
+            #if target-angle > MAX_FORCE:
+            #    target=angle+MAX_FORCE
+            #elif target-angle < -MAX_FORCE:
+            #    target=angle-MAX_FORCE
+            #
+            #if follow:
+            #    target=angle
+            #
+            #target_pos = clamp(target, -MOTOR_LIMIT, MOTOR_LIMIT)
 
-        if follow:
-            target=angle
 
-        target_pos = clamp(target, -MOTOR_LIMIT, MOTOR_LIMIT)
-
-
-        if ffb:
-            m.position_sp = target_pos
-            m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
-            m.run_to_abs_pos()
+            #m.position_sp = target_pos
+            #m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
+            #m.run_to_abs_pos()
 
 
         send_data = bytearray(int(angle+360).to_bytes(4, 'big', signed=True))
@@ -192,9 +194,10 @@ def run():
 
 
 
-m.position_sp = 0
-m.speed_sp=m.max_speed
-m.stop_action="coast"
+#m.position_sp = 0
+#m.speed_sp=m.max_speed
+#m.stop_action="coast"
+sound.beep()
 
 socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 socket.bind((IP, PORT))
@@ -202,5 +205,5 @@ while True:
     try:
         run()
     except KeyboardInterrupt:
-        m.stop()
+        #m.stop()
         socket.close()
