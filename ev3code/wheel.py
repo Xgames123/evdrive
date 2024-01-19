@@ -54,11 +54,14 @@ def calib_segment(count, direct=1):
 def calibrate(count=CALIB_LEN, ffb=True):
     global calibrated
     global sound
+    global full_rotations
     #calibrated = True
     #print("zeroing wheel based of of previous data")
     #m.on_to_position(SpeedPercent(100), 0)
     #if MANUAL_ZERO:
     #    manual_zeroing()
+
+    full_rotations=0
 
     print("zeroing sensor")
     #m.reset()
@@ -110,12 +113,14 @@ def manual_zeroing():
 
 #offset=3
 #calibrated=False
+full_rotations = 0
 
 calibrate()
 def run():
     global socket
     global calibrated
     global buttons
+    global sound
     print("listening on ", IP, ":", PORT)
 
     target_pos=0
@@ -129,10 +134,14 @@ def run():
         data, addr = socket.recvfrom(5)
         if len(data) == 1 and data[0] == 255:
             print("quit")
+            sound.beep()
+            sound.beep()
             return
 
         if len(data) != 5:
             print("Invalid data. closing connection")
+            sound.beep()
+            sound.beep()
             return
         target=int.from_bytes(data[0:4], "big", signed= True)
         if data[4] == 1:
@@ -147,9 +156,18 @@ def run():
         #    ffb = False
 
         try:
-            angle = s.angle#*offset
+            new_angle = s.angle#*offset
         except ValueError:
+            sound.beep()
             print("Failed to get gyro angle (ValueError)")
+
+        diff = angle-new_angle
+        if diff > 360:
+            full_rotations+=1
+        elif diff < 360:
+            full_rotations_=1
+        angle = new_angle
+
         #if ffb:
             #delta=m.position-m.position_sp
 
@@ -197,7 +215,6 @@ def run():
 #m.position_sp = 0
 #m.speed_sp=m.max_speed
 #m.stop_action="coast"
-sound.beep()
 
 socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 socket.bind((IP, PORT))

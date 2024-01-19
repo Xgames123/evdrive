@@ -47,6 +47,7 @@ class Pedal:
 
 
 def run():
+    global sound
     global socket
     global trot
     global brea
@@ -63,6 +64,7 @@ def run():
     while True:
         if calib:
             if trot.calib() & brea.calib() & clu.calib():
+                sound.beep()
                 print("calibration done")
                 print("listening on ", IP, ":", PORT)
                 calib=False
