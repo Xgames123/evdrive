@@ -5,7 +5,7 @@
 * [ ] auto detect drift and correct for it
 
 # driver
-* [?] uploader prog
+* [x] uploader prog
 
 # ev3
 * [ ] auto start or via brickman

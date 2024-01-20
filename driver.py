@@ -53,7 +53,7 @@ def do_pedals():
     data = None
     try:
         data, addr=pedals_s.recvfrom(3)
-    except socket.timeout:
+    except:
         print("failed to recv pedal data")
         return
 
@@ -74,24 +74,24 @@ def do_steering_wheel():
     addr = None
     try:
         data, addr = wheel_s.recvfrom(7)
-    except socket.timeout:
+    except :
         print("failed to recv steering data")
         return
     angle=float(int.from_bytes(data[0:4], "big", signed= True))
     angle=(angle-360)/360
     angle=angle
     if data[4] == 1:
-        print("start button")
+        #print("start button")
         gamepad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
     else:
         gamepad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
     if data[5] == 1:
-        print("gear l button")
+        #print("gear l button")
         gamepad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_X)
     else:
         gamepad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_X)
     if data[6] == 1:
-        print("gear r button")
+        #print("gear r button")
         gamepad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
     else:
         gamepad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
@@ -109,7 +109,8 @@ elif "-dw" in args:
     disable_wheel=True
 elif "--help" in args or "-h" in args:
     print(
-"""driver.py [OPTIONS]
+"""A program for connecting to pedals.py and wheel.py and creating a virutal joystick from the input
+driver.py [OPTIONS]
     OPTIONS:
     -dp           disable pedals
     -dw           disable wheel
@@ -129,15 +130,20 @@ wheels_addr = None
 wheel_s = None
 if not disable_wheel:
     wheel_addr, wheel_s = connect_wheel()
+else:
+    print("wheel disabled")
 
 pedals_addr = None
 pedals_s = None
 if not disable_pedals:
     pedals_addr, pedals_s = connect_pedals()
+else:
+    print("pedals disabled")
 
 
 target=0
 quit_data=b'0xff'
+
 try:
     while True:
         if not disable_pedals:

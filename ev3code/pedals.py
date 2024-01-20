@@ -73,7 +73,9 @@ def run():
         data, addr = socket.recvfrom(1)
         if data[0] == 255:
             print("quit")
-            return
+        elif data[1] == 1: # echo
+            socket.sendto(b"\x01", addr)
+            continue
 
         send_data = bytearray()
         send_data.append(int(trot.get()*255))

@@ -132,11 +132,15 @@ def run():
             calibrate()
 
         data, addr = socket.recvfrom(5)
-        if len(data) == 1 and data[0] == 255:
-            print("quit")
-            sound.beep()
-            sound.beep()
-            return
+        if len(data) == 1:
+            if data[0] == 255:
+                print("quit")
+                sound.beep()
+                sound.beep()
+                return
+            elif data[0] == 1: # echo
+                socket.sendto(b'\x01', addr)
+                continue
 
         if len(data) != 5:
             print("Invalid data. closing connection")
@@ -188,7 +192,7 @@ def run():
             #m.run_to_abs_pos()
 
 
-        send_data = bytearray(int(angle+360).to_bytes(4, 'big', signed=True))
+        send_data = bytearray(int((angle*full_rotations)+360).to_bytes(4, 'big', signed=True))
         if start_button.is_pressed:
             send_data.append(1)
         else:

@@ -1,6 +1,7 @@
 from paramiko.client import SSHClient, SSHException
-from os import environ
+from os import environ, system
 from sys import argv
+import time
 
 def env_var(name, default_value):
     value=default_value
@@ -21,15 +22,46 @@ def setup(name, default_ip, default_username, default_passwd, upload=False, inte
         print("creating sftp connection...")
         ftp = ssh.open_sftp()
         print("uploading files...")
-        info = ftp.put(f"ev3code/{name}.py", f"{name}.py")
-        print("mode", info.st_mode)
-        if info.st_mode != 33261:
-            print("changing mode")
-            file = ftp.file(f"{name}.py")
-            file.chmod(33261)
-            file.close()
+        ftp.put(f"ev3code/{name}.py", f"{name}.py")
+        return
 
-    return ssh.exec_command(f"python3 {name}.py")
+    print("killing all python3's on ev3")
+    ssh.exec_command("killall python3")
+    time.sleep(1)
+    print("starting new program on ev3")
+    channel=ssh.get_transport().open_session()
+    channel.exec_command(f"python3 {name}.py")
+    return channel
+
+def run_channel(channel, name):
+    if channel != None:
+        if channel.exit_status_ready():
+            print(f"{name} stopped output:")
+            file = channel.makefile()
+            file_err = channel.makefile_stderr()
+            for line in file.readlines():
+                print(line)
+            for line in file_err.readlines():
+                print(line)
+            file.close()
+            file_err.close()
+            channel=None
+            return False
+
+    return True
+
+if "--help" in argv or "-h" in argv:
+    print(
+"""Setup and start evdrive
+usage: start.py [OPTIONS]
+    OPTIONS:
+    -u, --upload  upload the python files to the ev3s
+    -dp           disable pedals
+    -dw           disable wheel
+    -h, --help    show this message
+""")
+
+    exit(0)
 
 upload=False
 if "-u" in argv or "--upload" in argv:
@@ -41,17 +73,27 @@ print("host keys loaded")
 
 wheel_channel=None
 pedals_channel=None
-if not "-dw" in argv:
+driver_args=""
+if "-dw" in argv:
+    driver_args+=" -dw"
+else:
     wheel_channel = setup("wheel", "192.168.137.3", "robot", "maker", upload=upload)
-if not "-dp" in argv:
+if "-dp" in argv:
+    driver_args+=" -dp"
+else:
     pedals_channel = setup("pedals", "192.168.137.4", "robot", "maker", upload=upload)
 
-while True:
-    if pedals_channel != None:
-        stdin, stdout, stderr = pedals_channel
-        print("pedals:", stdout)
-        print("pedals_err:", stderr)
-    if wheel_channel != None:
-        stdin, stdout, stderr = wheel_channel
-        print("wheel:", stdout)
-        print("wheel_err:", stderr)
+if upload:
+    print("upload done")
+    exit(0)
+
+print("starting driver...")
+print(driver_args)
+system("python driver.py "+driver_args)
+try:
+    while run_channel(pedals_channel, "pedals") & run_channel(wheel_channel, "wheel"):
+        pass
+    exit(0)
+except:
+    ssh.close()
+    raise
