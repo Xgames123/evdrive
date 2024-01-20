@@ -10,8 +10,10 @@ PORT=6769
 
 def clamp01(n):
     return clamp(n, 0, 1)
+
 def clamp(n, minv, maxv):
     return max(minv, min(n, maxv))
+
 def to01(value, minb, maxb):
     if maxb-minb == 0:
         return 0
@@ -73,7 +75,7 @@ def run():
         data, addr = socket.recvfrom(1)
         if data[0] == 255:
             print("quit")
-        elif data[1] == 1: # echo
+        elif data[0] == 1: # echo
             socket.sendto(b"\x01", addr)
             continue
 

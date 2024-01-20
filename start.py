@@ -23,7 +23,6 @@ def setup(name, default_ip, default_username, default_passwd, upload=False, inte
         ftp = ssh.open_sftp()
         print("uploading files...")
         ftp.put(f"ev3code/{name}.py", f"{name}.py")
-        return
 
     print("killing all python3's on ev3")
     ssh.exec_command("killall python3")
@@ -45,7 +44,6 @@ def run_channel(channel, name):
                 print(line)
             file.close()
             file_err.close()
-            channel=None
             return False
 
     return True
@@ -82,10 +80,6 @@ if "-dp" in argv:
     driver_args+=" -dp"
 else:
     pedals_channel = setup("pedals", "192.168.137.4", "robot", "maker", upload=upload)
-
-if upload:
-    print("upload done")
-    exit(0)
 
 print("starting driver...")
 print(driver_args)

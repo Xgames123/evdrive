@@ -22,6 +22,7 @@ CALIB_JUMP=30
 CALIB_DELAY=1
 MAX_FORCE=230
 MOTOR_LIMIT=1200
+MAX_ANGLE=360
 
 
 def clamp01(n):
@@ -54,14 +55,12 @@ def calib_segment(count, direct=1):
 def calibrate(count=CALIB_LEN, ffb=True):
     global calibrated
     global sound
-    global full_rotations
     #calibrated = True
     #print("zeroing wheel based of of previous data")
     #m.on_to_position(SpeedPercent(100), 0)
     #if MANUAL_ZERO:
     #    manual_zeroing()
 
-    full_rotations=0
 
     print("zeroing sensor")
     #m.reset()
@@ -113,7 +112,6 @@ def manual_zeroing():
 
 #offset=3
 #calibrated=False
-full_rotations = 0
 
 calibrate()
 def run():
@@ -160,17 +158,10 @@ def run():
         #    ffb = False
 
         try:
-            new_angle = s.angle#*offset
+            angle = s.angle
         except ValueError:
             sound.beep()
             print("Failed to get gyro angle (ValueError)")
-
-        diff = angle-new_angle
-        if diff > 360:
-            full_rotations+=1
-        elif diff < 360:
-            full_rotations_=1
-        angle = new_angle
 
         #if ffb:
             #delta=m.position-m.position_sp
@@ -190,9 +181,7 @@ def run():
             #m.position_sp = target_pos
             #m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
             #m.run_to_abs_pos()
-
-
-        send_data = bytearray(int((angle*full_rotations)+360).to_bytes(4, 'big', signed=True))
+        send_data = bytearray(int((clamp(angle, -MAX_ANGLE, MAX_ANGLE)+MAX_ANGLE)).to_bytes(4, 'big', signed=True))
         if start_button.is_pressed:
             send_data.append(1)
         else:

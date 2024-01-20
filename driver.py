@@ -5,6 +5,8 @@ from os import environ
 import socket
 import sys
 
+MAX_WHEEL_ANGLE=360
+
 CMD_CALIB=1
 CMD_FOLLOW_ON=2
 CMD_FOLLOW_OFF=3
@@ -57,9 +59,9 @@ def do_pedals():
         print("failed to recv pedal data")
         return
 
-    trot=float(data[0])/255
-    brea=float(data[1])/255
-    clu=float(data[2])/255
+    trot=(float(data[0])/255)
+    brea=(float(data[1])/255)
+    clu=(float(data[2])/127.5)-1
 
     gamepad.right_trigger_float(trot)
     gamepad.left_trigger_float(brea)
@@ -74,11 +76,11 @@ def do_steering_wheel():
     addr = None
     try:
         data, addr = wheel_s.recvfrom(7)
-    except :
+    except:
         print("failed to recv steering data")
         return
     angle=float(int.from_bytes(data[0:4], "big", signed= True))
-    angle=(angle-360)/360
+    angle=(angle-MAX_WHEEL_ANGLE)/MAX_WHEEL_ANGLE
     angle=angle
     if data[4] == 1:
         #print("start button")
