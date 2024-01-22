@@ -72,7 +72,7 @@ def manual_zeroing():
            break
 
 print("zeroing wheel")
-m.stop_action="break"
+m.stop_action="brake"
 m.on_to_position(SpeedPercent(50), 0)
 m.stop_action="coast"
 calibrate()
