@@ -52,34 +52,14 @@ def calib_segment(count, direct=1):
         print(str(i+1)+"/"+str(count))
     return offsets
 
-def calibrate(count=CALIB_LEN, ffb=True):
+def calibrate():
+    print("calibrating...")
     global calibrated
     global sound
-    #calibrated = True
-    #print("zeroing wheel based of of previous data")
-    #m.on_to_position(SpeedPercent(100), 0)
-    #if MANUAL_ZERO:
-    #    manual_zeroing()
-
-
-    print("zeroing sensor")
-    #m.reset()
-    s.calibrate()
-
-    #sleep(1.5)
-    #offsets=calib_segment(math.floor(count/2), 1)
-    #m.on_to_position(SpeedPercent(100), 0)
-    #sleep(1.5)
-    #offsets+=calib_segment(math.ceil(count/2), -1)
-    #m.on_to_position(SpeedPercent(100), 0)
-
-    #offsets.sort()
-    #global offset
-    #offset = offsets[len(offsets)//2]
-    #print(offset)
-    #print("calibrating done")
-    #print("offset="+str(offset))
+    m.reset()
     sound.beep()
+    calibrated=True
+    print("calib done")
 
 
 print("setting up devices")
@@ -87,8 +67,7 @@ print("setting up devices")
 start_button=TouchSensor(INPUT_1)
 gear_switch_l=TouchSensor(INPUT_3)
 gear_switch_r=TouchSensor(INPUT_4)
-#m = LargeMotor(OUTPUT_A)
-s = GyroSensor(INPUT_2)
+m = LargeMotor(OUTPUT_D)
 buttons = Button()
 sound = Sound()
 
@@ -108,11 +87,8 @@ def manual_zeroing():
        elif cmd == "":
            break
 
-
-
-#offset=3
-#calibrated=False
-
+print("zeroing wheel")
+m.on_to_position(SpeedPercent(50), 0)
 calibrate()
 def run():
     global socket
@@ -126,8 +102,8 @@ def run():
     ffb=True
     angle=0
     while True:
-        if buttons.enter:
-            calibrate()
+        # if buttons.enter:
+        #     calibrate()
 
         data, addr = socket.recvfrom(5)
         if len(data) == 1:
@@ -147,7 +123,7 @@ def run():
             return
         target=int.from_bytes(data[0:4], "big", signed= True)
         if data[4] == 1:
-            calibrate(CALIB_LEN)
+            calibrate()
         elif data[4] == 2:
             follow=True
         elif data[4] == 3:
