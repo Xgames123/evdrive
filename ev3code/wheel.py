@@ -3,7 +3,7 @@ from time import sleep
 import math
 import socket
 
-from ev3dev2.motor import LargeMotor, OUTPUT_A, SpeedPercent
+from ev3dev2.motor import LargeMotor, OUTPUT_D, SpeedPercent
 from ev3dev2.sensor import INPUT_2, INPUT_1, INPUT_3, INPUT_4
 from ev3dev2.sensor.lego import GyroSensor, TouchSensor
 from ev3dev2.button import Button
@@ -35,23 +35,6 @@ def to01(value, minb, maxb):
         return 0
     return clamp01(float(value - minb) / float(maxb-minb))
 
-def calib_segment(count, direct=1):
-    offsets=[]
-    for i in range(count):
-        motor_rot=(CALIB_JUMP*(i+1))*direct
-        m.on_to_position(SpeedPercent(50), motor_rot)
-        sleep(1.5)
-        angle=s.angle
-        if angle == 0:
-            print("WARN: div by zero")
-            offsets.append(1)
-            continue
-        new_offset=(motor_rot/angle)
-        print("offset="+str(new_offset))
-        offsets.append(new_offset)
-        print(str(i+1)+"/"+str(count))
-    return offsets
-
 def calibrate():
     print("calibrating...")
     global calibrated
@@ -68,6 +51,7 @@ start_button=TouchSensor(INPUT_1)
 gear_switch_l=TouchSensor(INPUT_3)
 gear_switch_r=TouchSensor(INPUT_4)
 m = LargeMotor(OUTPUT_D)
+m.stop_action="coast"
 buttons = Button()
 sound = Sound()
 
@@ -88,7 +72,9 @@ def manual_zeroing():
            break
 
 print("zeroing wheel")
+m.stop_action="break"
 m.on_to_position(SpeedPercent(50), 0)
+m.stop_action="coast"
 calibrate()
 def run():
     global socket
@@ -102,8 +88,8 @@ def run():
     ffb=True
     angle=0
     while True:
-        # if buttons.enter:
-        #     calibrate()
+        if buttons.enter:
+            calibrate()
 
         data, addr = socket.recvfrom(5)
         if len(data) == 1:
@@ -133,12 +119,7 @@ def run():
         #elif data[4] == 5:
         #    ffb = False
 
-        try:
-            angle = s.angle
-        except ValueError:
-            sound.beep()
-            print("Failed to get gyro angle (ValueError)")
-
+        angle = (m.position/m.count_per_rot)*360.0
         #if ffb:
             #delta=m.position-m.position_sp
 
@@ -157,6 +138,12 @@ def run():
             #m.position_sp = target_pos
             #m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
             #m.run_to_abs_pos()
+        if angle > MAX_ANGLE:
+            m.position_sp=(m.count_per_rot/360)
+            m.run_to_rel_pos()
+        elif angle < -MAX_ANGLE:
+            m.position_sp=-(m.count_per_rot/360)
+            m.run_to_rel_pos()
         send_data = bytearray(int((clamp(angle, -MAX_ANGLE, MAX_ANGLE)+MAX_ANGLE)).to_bytes(4, 'big', signed=True))
         if start_button.is_pressed:
             send_data.append(1)
@@ -180,10 +167,6 @@ def run():
             return
 
 
-
-#m.position_sp = 0
-#m.speed_sp=m.max_speed
-#m.stop_action="coast"
 
 socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 socket.bind((IP, PORT))

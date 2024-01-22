@@ -81,7 +81,6 @@ def do_steering_wheel():
         return
     angle=float(int.from_bytes(data[0:4], "big", signed= True))
     angle=(angle-MAX_WHEEL_ANGLE)/MAX_WHEEL_ANGLE
-    angle=angle
     if data[4] == 1:
         #print("start button")
         gamepad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
