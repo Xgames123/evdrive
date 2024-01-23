@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 from time import sleep
 import math
 import socket
@@ -8,20 +8,13 @@ from ev3dev2.sensor import INPUT_2, INPUT_1, INPUT_3, INPUT_4
 from ev3dev2.sensor.lego import GyroSensor, TouchSensor
 from ev3dev2.button import Button
 from ev3dev2.sound import Sound
+#from ev3dev2.display import Display
+#import ev3dev2.fonts as fonts
 
 IP="0.0.0.0"
 PORT=6769
 
-MANUAL_ZERO=False
-
-FOLLOW_MARGIN=50
-CALIB_LEN=4
-#CALIB_LEN=20
-CALIB_JUMP=30
-#CALIB_DELAY=1.5
-CALIB_DELAY=1
 MAX_FORCE=230
-MOTOR_LIMIT=1200
 MAX_ANGLE=360
 
 
@@ -53,6 +46,9 @@ gear_switch_r=TouchSensor(INPUT_4)
 m = LargeMotor(OUTPUT_D)
 m.stop_action="coast"
 buttons = Button()
+display = Display()
+title_font=fonts.load("courB24")
+text_font=fonts.load("courR14")
 sound = Sound()
 
 
@@ -71,9 +67,19 @@ def manual_zeroing():
        elif cmd == "":
            break
 
+# def update_screen():
+#     global display
+#     global title_font
+#     global text_font
+#     display.text_grid("evdrive", x=(22/2)+(7/2), y=0, font=title_font, clear_screen=False)
+#     display.text_grid("address:   {IP}:{PORT}", x=1, y=2, font=text_font,clear_screen=False)
+#     display.text_grid( "max_angle: {MAX_ANGLE} deg",x=1, y=3, font=text_font, clear_screen=False)
+#     display.update()
+
+#update_screen()
 print("zeroing wheel")
 m.stop_action="brake"
-m.on_to_position(SpeedPercent(50), 0)
+m.on_to_position(SpeedPercent(10), 0)
 m.stop_action="coast"
 calibrate()
 def run():
@@ -138,12 +144,15 @@ def run():
             #m.position_sp = target_pos
             #m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
             #m.run_to_abs_pos()
-        if angle > MAX_ANGLE:
-            m.position_sp=(m.count_per_rot/360)
-            m.run_to_rel_pos()
+        if angle > MAX_ANGLE :
+            m.position_sp=m.count_per_rot*(MAX_ANGLE/360)
+            m.speed_sp=m.max_speed*0.1
+            m.run_to_abs_pos()
         elif angle < -MAX_ANGLE:
-            m.position_sp=-(m.count_per_rot/360)
-            m.run_to_rel_pos()
+            m.position_sp=m.count_per_rot*(-MAX_ANGLE/360)
+            m.speed_sp=m.max_speed*0.1
+            m.run_to_abs_pos()
+
         send_data = bytearray(int((clamp(angle, -MAX_ANGLE, MAX_ANGLE)+MAX_ANGLE)).to_bytes(4, 'big', signed=True))
         if start_button.is_pressed:
             send_data.append(1)

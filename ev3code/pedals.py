@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 from time import sleep
 from ev3dev2.motor import LargeMotor, OUTPUT_D, OUTPUT_B, OUTPUT_C
 from ev3dev2.sound import Sound

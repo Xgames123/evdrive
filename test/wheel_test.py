@@ -2,6 +2,7 @@
 
 import socket
 import sys
+import time
 
 IP="192.168.137.3"
 PORT=6769
@@ -42,6 +43,7 @@ try:
             data, addr = s.recvfrom(7)
         except:
             print("failed to recv steering data")
+            time.sleep(1)
             continue
         angle=float(int.from_bytes(data[0:4], "big", signed= True))
         angle=(angle-MAX_WHEEL_ANGLE)/MAX_WHEEL_ANGLE

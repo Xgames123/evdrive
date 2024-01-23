@@ -57,6 +57,7 @@ def do_pedals():
         data, addr=pedals_s.recvfrom(3)
     except:
         print("failed to recv pedal data")
+        time.sleep(1)
         return
 
     trot=(float(data[0])/255)
@@ -78,6 +79,7 @@ def do_steering_wheel():
         data, addr = wheel_s.recvfrom(7)
     except:
         print("failed to recv steering data")
+        time.sleep(1)
         return
     angle=float(int.from_bytes(data[0:4], "big", signed= True))
     angle=(angle-MAX_WHEEL_ANGLE)/MAX_WHEEL_ANGLE
