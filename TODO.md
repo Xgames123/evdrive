@@ -1,5 +1,5 @@
 # Wheel
-* [?] fix steer angle wrap around
+* [x] fix steer angle wrap around
 * [x] wheel proper zeroing when calibrating
 * [x] disable motor
 * [ ] auto detect drift and correct for it
