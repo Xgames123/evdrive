@@ -11,8 +11,8 @@ from ev3dev2.sound import Sound
 #from ev3dev2.display import Display
 #import ev3dev2.fonts as fonts
 
-IP="0.0.0.0"
-PORT=6769
+ADDR=("0.0.0.0", 6769)
+PEDALS_ADDR=("evpedals", 6969)
 
 MAX_FORCE=230
 MAX_ANGLE=540
@@ -83,67 +83,36 @@ m.on_to_position(SpeedPercent(10), 0)
 m.stop_action="coast"
 calibrate()
 def run():
-    global socket
+    global s
+    global pedals_socket
     global calibrated
     global buttons
     global sound
-    print("listening on ", IP, ":", PORT)
+    print("listening on", ADDR)
 
     target_pos=0
-    follow=False
-    ffb=True
     angle=0
     while True:
         if buttons.enter:
             calibrate()
 
-        data, addr = socket.recvfrom(5)
-        if len(data) == 1:
-            if data[0] == 255:
-                print("quit")
-                sound.beep()
-                sound.beep()
-                return
-            elif data[0] == 1: # echo
-                socket.sendto(b'\x01', addr)
-                continue
-
-        if len(data) != 5:
-            print("Invalid data. closing connection")
+        data, addr = s.recvfrom(1)
+        command=data[0]
+        pedals_socket.send(command)
+        if command == 255:
+            print("quit")
             sound.beep()
+            print("forwarding to pedals...")
+            pedals_socket.send(command)
             sound.beep()
             return
-        target=int.from_bytes(data[0:4], "big", signed= True)
-        if data[4] == 1:
+        elif command == 1: # echo
+            s.sendto(b'\x01', addr)
+            continue
+        elif command == 2:
             calibrate()
-        elif data[4] == 2:
-            follow=True
-        elif data[4] == 3:
-            follow = False
-        #elif data[4] == 4:
-        #    ffb = True
-        #elif data[4] == 5:
-        #    ffb = False
 
         angle = (m.position/m.count_per_rot)*360.0
-        #if ffb:
-            #delta=m.position-m.position_sp
-
-            #print(abs(target-angle))
-            #if target-angle > MAX_FORCE:
-            #    target=angle+MAX_FORCE
-            #elif target-angle < -MAX_FORCE:
-            #    target=angle-MAX_FORCE
-            #
-            #if follow:
-            #    target=angle
-            #
-            #target_pos = clamp(target, -MOTOR_LIMIT, MOTOR_LIMIT)
-
-
-            #m.position_sp = target_pos
-            #m.speed_sp = m.max_speed*clamp01(abs(delta)/FOLLOW_MARGIN)
-            #m.run_to_abs_pos()
         if angle > MAX_ANGLE :
             m.position_sp=m.count_per_rot*(MAX_ANGLE/360)
             m.speed_sp=m.max_speed*0.1
@@ -154,34 +123,33 @@ def run():
             m.run_to_abs_pos()
 
         send_data = bytearray(int((clamp(angle, -MAX_ANGLE, MAX_ANGLE)+MAX_ANGLE)).to_bytes(4, 'big', signed=True))
-        if start_button.is_pressed:
-            send_data.append(1)
-        else:
-            send_data.append(0)
 
-        if gear_switch_l.is_pressed:
-            send_data.append(1)
-        else:
-            send_data.append(0)
+        buttons=(start_button.is_pressed) | (gear_switch_l.is_pressed << 1) | (gear_switch_r.is_pressed << 2)
+        send_data.append(buttons)
 
-        if gear_switch_r.is_pressed:
-            send_data.append(1)
-        else:
-            send_data.append(0)
+        data = pedals_socket.recvfrom(4)
+        pedals_status=data[0]
+        send_data.append(data[1])
+        send_data.append(data[2])
+        send_data.append(data[3])
 
         try:
-            socket.sendto(send_data, addr)
+            s.sendto(send_data, addr)
         except:
             print("Failed to send data. closing connection")
             return
 
 
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind(ADDR)
 
-socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-socket.bind((IP, PORT))
+pedals_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+pedals_socket.settimeout(2)
+print("connecting to", PEDALS_ADDR)
+pedals_socket.connect(PEDALS_ADDR)
 while True:
     try:
         run()
     except KeyboardInterrupt:
-        #m.stop()
-        socket.close()
+        pedals_socket.close()
+        s.close()

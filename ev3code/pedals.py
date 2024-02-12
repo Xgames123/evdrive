@@ -5,8 +5,7 @@ from ev3dev2.sound import Sound
 import math
 import socket
 
-IP="0.0.0.0"
-PORT=6769
+ADDR=("0.0.0.0", 6969)
 
 def clamp01(n):
     return clamp(n, 0, 1)
@@ -50,7 +49,7 @@ class Pedal:
 
 def run():
     global sound
-    global socket
+    global s
     global trot
     global brea
     global clu
@@ -61,32 +60,28 @@ def run():
         brea.start_calib()
         clu.start_calib()
         print("PRESS DOWN ALL PEDALS SLOWLY")
-    else:
-        print("listening on ", IP, ":", PORT)
     while True:
         if calib:
             if trot.calib() & brea.calib() & clu.calib():
                 sound.beep()
                 print("calibration done")
-                print("listening on ", IP, ":", PORT)
                 calib=False
-            continue
 
-        data, addr = socket.recvfrom(1)
+        data, addr = s.recvfrom(1)
         if data[0] == 255:
             print("quit")
         elif data[0] == 1: # echo
-            socket.sendto(b"\x01", addr)
+            s.sendto(b"\x01", addr)
             continue
 
         send_data = bytearray()
+        send_data.append(calib)
         send_data.append(int(trot.get()*255))
         send_data.append(int(brea.get()*255))
         send_data.append(int(clu.get()*255))
-        print(send_data)
 
         try:
-            socket.sendto(send_data, addr)
+            s.sendto(send_data, addr)
         except:
             print("Failed to send data. closing connection")
             return
@@ -99,11 +94,12 @@ sound = Sound()
 sound.beep()
 
 
-socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-socket.bind((IP, PORT))
-calib=True
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind(ADDR)
+print("listening on", ADDR)
+calib=False
 while True:
     try:
         run()
     except KeyboardInterrupt:
-        socket.close()
+        s.close()
