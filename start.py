@@ -75,11 +75,11 @@ driver_args=""
 if "-dw" in argv:
     driver_args+=" -dw"
 else:
-    wheel_channel = setup("wheel", "192.168.137.3", "robot", "maker", upload=upload)
+    wheel_channel = setup("wheel", "evwheel", "robot", "maker", upload=upload)
 if "-dp" in argv:
     driver_args+=" -dp"
 else:
-    pedals_channel = setup("pedals", "192.168.137.4", "robot", "maker", upload=upload)
+    pedals_channel = setup("pedals", "evpedals", "robot", "maker", upload=upload)
 
 print("starting driver...")
 print(driver_args)

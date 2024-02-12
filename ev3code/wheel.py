@@ -15,7 +15,7 @@ IP="0.0.0.0"
 PORT=6769
 
 MAX_FORCE=230
-MAX_ANGLE=360
+MAX_ANGLE=540
 
 
 def clamp01(n):
@@ -46,10 +46,10 @@ gear_switch_r=TouchSensor(INPUT_4)
 m = LargeMotor(OUTPUT_D)
 m.stop_action="coast"
 buttons = Button()
-display = Display()
-title_font=fonts.load("courB24")
-text_font=fonts.load("courR14")
 sound = Sound()
+#display = Display()
+#title_font=fonts.load("courB24")
+#text_font=fonts.load("courR14")
 
 
 def manual_zeroing():

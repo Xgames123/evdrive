@@ -5,7 +5,7 @@ from os import environ
 import socket
 import sys
 
-MAX_WHEEL_ANGLE=360
+MAX_WHEEL_ANGLE=540
 
 CMD_CALIB=1
 CMD_FOLLOW_ON=2
@@ -82,7 +82,7 @@ def do_steering_wheel():
         time.sleep(1)
         return
     angle=float(int.from_bytes(data[0:4], "big", signed= True))
-    angle=(angle-MAX_WHEEL_ANGLE)/MAX_WHEEL_ANGLE
+    angle=-((angle-MAX_WHEEL_ANGLE)/MAX_WHEEL_ANGLE)
     if data[4] == 1:
         #print("start button")
         gamepad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
