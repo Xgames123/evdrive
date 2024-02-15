@@ -18,13 +18,15 @@ CMD_FFB_OFF=5
 
 def connect():
     s=None
-    print("Connecting to ", ADDR)
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.settimeout(2)
-    s.connect(ADDR)
+    info = socket.getaddrinfo(ADDR[0], ADDR[1], proto=socket.IPPROTO_UDP)
+    IPV6_ADDR=info[0][4]
+    print("Connecting to ", IPV6_ADDR)
+    s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+    s.settimeout(3)
+    s.connect(IPV6_ADDR)
     return s
 
-def update_buttons_state(buttons):
+def update_buttons_state(val):
     global gamepad
 
     if (val >> 0) & True:
@@ -43,16 +45,20 @@ def update_buttons_state(buttons):
         gamepad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
 
 def update():
+    global s
     send_data=bytearray()
     send_data.append(0) # command
-    socket.send(send_data)
+    send_count = s.send(send_data)
+    if send_count == 0:
+        print("no data send")
+        return
 
     data = None
     addr = None
     try:
-        data, addr = socket.recvfrom(8)
-    except:
-        print("failed to recv packet data")
+        data, addr = s.recvfrom(8)
+    except Exception as e:
+        print("recv fail:",e)
         time.sleep(1)
         return
     angle=float(int.from_bytes(data[0:4], "big", signed= True))
@@ -87,7 +93,7 @@ if "--help" in args or "-h" in args:
 gamepad = vg.VX360Gamepad()
 gamepad.reset()
 
-socket=connect()
+s=connect()
 
 target=0
 quit_data=b'0xff'
@@ -99,7 +105,7 @@ try:
 
 except KeyboardInterrupt:
     print("disconnecting...")
-    socket.send(quit_data)
+    s.send(quit_data)
     time.sleep(0.1)
     raise
 

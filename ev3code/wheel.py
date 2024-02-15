@@ -11,7 +11,7 @@ from ev3dev2.sound import Sound
 #from ev3dev2.display import Display
 #import ev3dev2.fonts as fonts
 
-ADDR=("0.0.0.0", 6769)
+ADDR=("::", 6769)
 PEDALS_ADDR=("evpedals", 6969)
 
 MAX_FORCE=230
@@ -98,7 +98,7 @@ def run():
 
         data, addr = s.recvfrom(1)
         command=data[0]
-        pedals_socket.send(command)
+        pedals_socket.send(bytes(command))
         if command == 255:
             print("quit")
             sound.beep()
@@ -124,14 +124,24 @@ def run():
 
         send_data = bytearray(int((clamp(angle, -MAX_ANGLE, MAX_ANGLE)+MAX_ANGLE)).to_bytes(4, 'big', signed=True))
 
-        buttons=(start_button.is_pressed) | (gear_switch_l.is_pressed << 1) | (gear_switch_r.is_pressed << 2)
-        send_data.append(buttons)
+        buts=(start_button.is_pressed) | (gear_switch_l.is_pressed << 1) | (gear_switch_r.is_pressed << 2)
+        send_data.append(buts)
 
-        data = pedals_socket.recvfrom(4)
-        pedals_status=data[0]
-        send_data.append(data[1])
-        send_data.append(data[2])
-        send_data.append(data[3])
+        data = None
+        try:
+            data, _ = pedals_socket.recvfrom(4)
+        except Exception as e:
+            print("pedals recv fail:", e)
+
+        if data == None:
+            send_data.append(0)
+            send_data.append(0)
+            send_data.append(0)
+        else:
+            pedals_status=data[0]
+            send_data.append(data[1])
+            send_data.append(data[2])
+            send_data.append(data[3])
 
         try:
             s.sendto(send_data, addr)
@@ -140,11 +150,11 @@ def run():
             return
 
 
-s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
 s.bind(ADDR)
 
 pedals_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-pedals_socket.settimeout(2)
+pedals_socket.settimeout(1)
 print("connecting to", PEDALS_ADDR)
 pedals_socket.connect(PEDALS_ADDR)
 while True:

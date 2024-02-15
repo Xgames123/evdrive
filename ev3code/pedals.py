@@ -68,14 +68,15 @@ def run():
                 calib=False
 
         data, addr = s.recvfrom(1)
-        if data[0] == 255:
-            print("quit")
-        elif data[0] == 1: # echo
-            s.sendto(b"\x01", addr)
-            continue
+        if len(data) == 1:
+            if data[0] == 255:
+                print("quit")
+            elif data[0] == 1: # echo
+                s.sendto(b"\x01", addr)
+                continue
 
         send_data = bytearray()
-        send_data.append(calib)
+        send_data.append(int(calib))
         send_data.append(int(trot.get()*255))
         send_data.append(int(brea.get()*255))
         send_data.append(int(clu.get()*255))
@@ -97,7 +98,7 @@ sound.beep()
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind(ADDR)
 print("listening on", ADDR)
-calib=False
+calib=True
 while True:
     try:
         run()
