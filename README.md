@@ -3,6 +3,9 @@ Steering wheel + pedals made with the lego ev3
 
 [![demo video](https://img.youtube.com/vi/g0dI3Tlzhqg/0.jpg)](https://www.youtube.com/watch?v=g0dI3Tlzhqg)
 
+# build instructions
+Here are some [images](images/) form different angles
+
 # setup
 1. install [ev3dev](ev3dev.org) on your 2 ev3s
 2. [connect 1 ev3 to your pc](https://www.ev3dev.org/docs/networking)
