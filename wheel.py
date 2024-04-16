@@ -12,7 +12,8 @@ from ev3dev2.sound import Sound
 #import ev3dev2.fonts as fonts
 
 ADDR=("::", 6769)
-PEDALS_ADDR=("evpedals", 6969)
+#PEDALS_ADDR=("evpedals", 6969)
+PEDALS_ADDR=None
 
 MAX_FORCE=230
 MAX_ANGLE=540
@@ -88,7 +89,8 @@ def run():
     global calibrated
     global buttons
     global sound
-    print("listening on", ADDR)
+    global IPV6_ADDR
+    print("listening on", IPV6_ADDR)
 
     target_pos=0
     angle=0
@@ -98,13 +100,15 @@ def run():
 
         data, addr = s.recvfrom(1)
         command=data[0]
-        pedals_socket.send(bytes(command))
+        if pedals_socket:
+            pedals_socket.send(bytes(command))
         if command == 255:
             print("quit")
             sound.beep()
-            print("forwarding to pedals...")
-            pedals_socket.send(command)
-            sound.beep()
+            if pedals_socket:
+                print("forwarding to pedals...")
+                pedals_socket.send(command)
+                sound.beep()
             return
         elif command == 1: # echo
             s.sendto(b'\x01', addr)
@@ -126,22 +130,22 @@ def run():
 
         buts=(start_button.is_pressed) | (gear_switch_l.is_pressed << 1) | (gear_switch_r.is_pressed << 2)
         send_data.append(buts)
+        
+        if pedals_socket:
+            data = None
+            try:
+                data, _ = pedals_socket.recvfrom(3)
+            except Exception as e:
+                print("pedals recv fail:", e)
 
-        data = None
-        try:
-            data, _ = pedals_socket.recvfrom(4)
-        except Exception as e:
-            print("pedals recv fail:", e)
-
-        if data == None:
-            send_data.append(0)
-            send_data.append(0)
-            send_data.append(0)
-        else:
-            pedals_status=data[0]
-            send_data.append(data[1])
-            send_data.append(data[2])
-            send_data.append(data[3])
+            if data == None:
+                send_data.append(0)
+                send_data.append(0)
+                send_data.append(0)
+            else:
+                send_data.append(data[1])
+                send_data.append(data[2])
+                send_data.append(data[3])
 
         try:
             s.sendto(send_data, addr)
@@ -151,15 +155,20 @@ def run():
 
 
 s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-s.bind(ADDR)
+info = socket.getaddrinfo(ADDR[0], ADDR[1], proto=socket.IPPROTO_UDP)
+IPV6_ADDR=info[0][4]
+s.bind(IPV6_ADDR)
 
-pedals_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-pedals_socket.settimeout(1)
-print("connecting to", PEDALS_ADDR)
-pedals_socket.connect(PEDALS_ADDR)
+pedals_socket = None
+if PEDALS_ADDR:
+    pedals_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    pedals_socket.settimeout(1)
+    print("connecting to", PEDALS_ADDR)
+    pedals_socket.connect(PEDALS_ADDR)
 while True:
     try:
         run()
     except KeyboardInterrupt:
-        pedals_socket.close()
+        if pedals_socket:
+            pedals_socket.close()
         s.close()
